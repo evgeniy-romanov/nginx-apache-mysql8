@@ -1,0 +1,484 @@
+#Установим статический ip
+ip a
+yum install vim
+#Настройка времени
+date
+yum install ntpdate
+ntpdate -u pool.ntp.org
+date
+#Редактируем конфигурационный файл ifcfg-enp0s3
+nano /etc/sysconfig/network-scripts/ifcfg-enp0s3
+TYPE=Ethernet
+PROXY_METHOD=none
+BROWSER_ONLY=no
+#BOOTPROTO=dhcp
+DEFROUTE=yes
+IPV4_FAILURE_FATAL=no
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_DEFROUTE=yes
+IPV6_FAILURE_FATAL=no
+IPV6_ADDR_GEN_MODE=stable-privacy
+NAME=enp0s3
+UUID=ed73648f-d427-4d9c-8a18-3c755b4ed262
+DEVICE=enp0s3
+ONBOOT=yes
+
+BOOTPROTO=static
+IPADDR=192.168.31.226
+NETMASK=255.255.255.0
+GATEWAY=192.168.31.1
+DNS1=8.8.8.8
+DNS2=1.1.1.1
+#Перезапускаем службу Network
+systemctl restart network
+
+rpm -qa | grep mysql
+yum remove mysql-xxx-xxx
+find / -name mysql
+rm -rf запрошенное расположение файла
+rpm -qa | grep mariadb
+yum -y remove mariadb-libs.x86_64
+
+# Устанавливаем репозиторий EPEL:
+yum install epel-release
+
+#Отключаем SELinux
+setenforce 0
+# Отключаем firewalld
+systemctl stop firewalld
+systemctl disable firewalld
+
+# Устанавливаем Apache:
+yum install httpd
+#Изменим порт в конфигурационном файле с 80 на 8080 :
+nano /etc/httpd/conf/httpd.conf 
+Listen 8080
+Listen 8081
+Listen 8082
+
+#Устанавливаем php 7.4
+yum install -y http://rpms.remirepo.net/enterprise/remi-release-7.rpm
+yum --enablerepo=remi-php74 install php php-pdo php-fpm php-gd php-mbstring php-mysql php-curl php-mcrypt php-json -y
+php -v
+
+# Запускаем Apache:
+systemctl start httpd
+systemctl enable httpd
+#Проверка портов
+ss -ntlp
+
+# Устанавливаем Nginx:
+yum install nginx
+# Запускаем Nginx:
+systemctl start nginx
+systemctl enable nginx
+#Проверка портов
+ss -ntlp
+
+#Добавим index.php с php info в /var/www/html/wordpress
+mkdir /var/www/html/wordpress
+echo "<?php phpinfo(); ?>" > /var/www/html/wordpress/index.php
+
+ chown -R apache:apache /var/www/html/wordpress
+systemctl restart httpd
+
+Настройка обратного проксисервера
+#Удаляем файл welcome.conf в директории /etc/httpd/conf.d
+rm -rf /etc/httpd/conf.d/welcome.conf
+#Создаем файл wordpress.conf в директории /etc/httpd/conf.d с содержимым
+cat > /etc/httpd/conf.d/wordpress.conf
+#Вставляем
+<VirtualHost *:8080>
+   ServerName yourdomain.name
+   DocumentRoot /var/www/html/wordpress
+   TransferLog  /var/log/httpd/access_8080
+    <Directory /var/www/html/wordpress>
+        AllowOverride All
+        DirectoryIndex index.php index.html
+        Options FollowSymLinks
+        Require all granted
+    </Directory>
+</VirtualHost>
+#-----------------------------------------
+<VirtualHost *:8081>
+   ServerName yourdomain.name
+   DocumentRoot /var/www/html/wordpress
+   TransferLog  /var/log/httpd/access_8081
+    <Directory /var/www/html/wordpress>
+        AllowOverride All
+        DirectoryIndex index.php index.html
+        Options FollowSymLinks
+        Require all granted
+    </Directory>
+</VirtualHost>
+#-----------------------------------------
+<VirtualHost *:8082>
+   ServerName yourdomain.name
+   DocumentRoot /var/www/html/wordpress
+   TransferLog  /var/log/httpd/access_8082
+    <Directory /var/www/html/wordpress>
+        AllowOverride All
+        DirectoryIndex index.php index.html
+        Options FollowSymLinks
+        Require all granted
+    </Directory>
+</VirtualHost>
+
+#В /etc/nginx/conf.d/ создаем файл wordpress.conf
+cat > /etc/nginx/conf.d/wordpress.conf
+#Вставляем
+
+upstream backend {
+    server 127.0.0.1:8080;
+    server 127.0.0.1:8081;
+    server 127.0.0.1:8082;
+}
+
+
+server {
+    listen 80;
+    server_name _;
+
+    location / {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+#Закомментировать сервер
+nano /etc/nginx/nginx.conf
+
+# Перезапускаем Nginx, httpd:
+systemctl restart nginx
+systemctl restart httpd
+
+ip a
+192.168.31.226
+#Проверяем в браузере index.php
+#Все работает, далее удаляем под установку wordpress
+rm -rf /var/www/html/wordpress/index.php
+
+
+#Устанавливаем ключ для mysql, что бы не было ошибки с GPG-ключом
+rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2022
+#Установка репозитория Oracle MySQL 8.0
+rpm -Uvh https://repo.mysql.com/mysql80-community-release-el7-3.noarch.rpm
+# Включаем репозиторий
+sed -i 's/enabled=1/enabled=0/' /etc/yum.repos.d/mysql-community.repo
+# Устанавливаем MySQL
+yum --enablerepo=mysql80-community install mysql-community-server
+
+mkdir /var/log/mysql
+chown mysql:mysql /var/log/mysql
+
+# Запускаем mysqld
+systemctl start mysqld
+systemctl enable mysqld
+# Проверка портов
+ss -ntlp
+
+#Устанавливаем wget rsync tcpdump
+yum install wget rsync tcpdump
+
+# Выясняем временный пароль MySQL
+grep "A temporary password" /var/log/mysqld.log
+
+# Запускаем скрипт безопасности для MySQL
+mysql_secure_installation
+Qaz/2152
+yes
+y
+y
+y
+y
+y
+# Заходим с паролем в mysql
+mysql  -u root  -p
+Qaz/2152
+exit
+
+#Выключаем машину сохраняем и клонируем
+shutdown -h now
+
+#Запускаем клон Slave
+#Установим статический ip
+ip a
+#Редактируем конфигурационный файл ifcfg-enp0s3
+nano /etc/sysconfig/network-scripts/ifcfg-enp0s3
+TYPE=Ethernet
+PROXY_METHOD=none
+BROWSER_ONLY=no
+#BOOTPROTO=dhcp
+DEFROUTE=yes
+IPV4_FAILURE_FATAL=no
+IPV6INIT=yes
+IPV6_AUTOCONF=yes
+IPV6_DEFROUTE=yes
+IPV6_FAILURE_FATAL=no
+IPV6_ADDR_GEN_MODE=stable-privacy
+NAME=enp0s3
+UUID=ed73648f-d427-4d9c-8a18-3c755b4ed262
+DEVICE=enp0s3
+ONBOOT=yes
+
+BOOTPROTO=static
+IPADDR=192.168.31.166
+NETMASK=255.255.255.0
+GATEWAY=192.168.31.1
+DNS1=8.8.8.8
+DNS2=1.1.1.1
+#Перезапускаем службу Network
+systemctl restart network
+setenforce 0
+systemctl start httpd
+ss -ntlp
+
+#Запускаем master
+setenforce 0
+systemctl start httpd
+ss -ntlp
+
+#Установка Wordpress
+cd /var/www/html/
+wget https://ru.wordpress.org/latest-ru_RU.tar.gz
+ tar xzvf latest-ru_RU.tar.gz
+ rm -rf latest-ru_RU.tar.gz
+ chown -R apache:apache /var/www/html/*
+
+#Проверяем в браузере
+192.168.31.226
+
+nano  /etc/my.cnf
+server_id = 1
+log_bin = /var/log/mysql/mysql-bin.log
+
+mkdir /var/log/mysql
+chown mysql:mysql /var/log/mysql
+systemctl  restart  mysqld
+ss -ntlp
+
+#Slave
+mkdir /var/log/mysql
+chown mysql:mysql /var/log/mysql
+
+# Удаляем  конфигурационный файл auto.cnf
+rm -rf /var/lib/mysql/auto.cnf
+nano  /etc/my.cnf
+# выбираем ID сервера, произвольное число, лучше начинать с 1
+server_id = 2
+
+systemctl restart mysqld
+
+#master
+mysql -u root -p
+Qaz/2152
+#Показать базы данных
+Show databases;
+#Показать пользователей
+SELECT User, Host FROM mysql.user;
+#Удаление пользователя
+#DROP USER user@localhost;
+#Смотреть позицию бинлога для настройки реплики
+show master status;
+
+Далее создаем и назначаем права пользователю для реплики:
+CREATE USER replicuser@'%' IDENTIFIED WITH 'caching_sha2_password' BY 'Qaz/2152';
+GRANT REPLICATION SLAVE ON *.* TO replicuser@'%';
+show master status;
+
+#slave
+#mysql -u root -p
+#Qaz/2152
+#Прописываем в слейве id мастера,  бинлог и позицию бинлога
+Stop slave;
+CHANGE MASTER TO MASTER_HOST='192.168.31.226', MASTER_USER='replicuser', MASTER_PASSWORD='Qaz/2152', MASTER_LOG_FILE = 'mysql-bin.000001', MASTER_LOG_POS = 702, GET_MASTER_PUBLIC_KEY = 1;
+После этого запускаем репликацию на Слейве:
+START SLAVE;
+SHOW SLAVE STATUS\G
+
+#master
+#Создадим бд на master для проверки позиции бинлога
+CREATE DATABASE test;
+show master status;
+show databases;
+
+#Slave
+SHOW SLAVE STATUS\G
+show databases;
+
+#master
+CREATE DATABASE wordpress;
+CREATE USER wordpressuser@localhost IDENTIFIED BY 'Tfhjvfyjdtt/86';
+GRANT ALL PRIVILEGES ON wordpress.* TO wordpressuser@localhost;
+FLUSH PRIVILEGES;
+show master status;
+
+#Slave
+SHOW SLAVE STATUS\G
+show databases;
+
+#Заходим в браузер вводим ip
+192.168.31.226
+
+DATABASE=wordpress
+Db_user=wordpressuser
+Db_password=Tfhjvfyjdtt/86
+localhost
+
+#master
+show databases;
+
+#Slave
+show databases;
+SHOW SLAVE STATUS\G
+exit
+#Подключаюсь к слейв через filezilla и передаю скрипт бекапа в cd /root 
+ip a
+
+nano Script_backup_1.sh
+
+#!/bin/bash
+MUSER="wordpressuser"
+MPASS="Tfhjvfyjdtt/86"
+MDATABASE="wordpress"
+
+echo "Dumping tables for database $MDATABASE"
+for table in `mysql -u $MUSER -p$MPASS -N -e "SHOW TABLES" $MDATABASE`
+do
+  echo -n "  Dumping table $table ... "
+  mysqldump --opt -u $MUSER -p$MPASS $MDATABASE $table > $table-`date +%Y%m%d%H%M%S`.sql
+  echo "done"
+done
+if [ "$table" = "" ]; then
+  echo "No tables found in $MDATABASE"
+else
+  echo "Dumping completed"
+fi
+#http://galaober.org.ua/node/82
+==============================================
+#Установка и настройка мониторинга
+#Скачиваем Prometheus
+curl -LO https://github.com/prometheus/prometheus/releases/download/v2.26.0/prometheus-2.26.0.linux-amd64.tar.gz 
+mkdir prometheus
+mv prometheus-2.26.0.linux-amd64.tar.gz  prometheus
+cd prometheus/
+#Разархивируем  
+tar -xvf prometheus-2.26.0.li nux-amd64.tar.gz
+Удаляем архив
+rm –rf prometheus-2.26.0.linux-amd64.tar.gz
+#Создадим пользователя из под которого будет работать прометеус
+useradd  --no-create-home  --shell /usr/sbin/nologin prometheus
+#Создадим пользователя из под которого будет работать node-exporter
+useradd  --no-create-home  --shell /bin/false node_exporter
+#Создадим директории для Prometheus
+mkdir {/etc/,/var/lib/}prometheus
+ls {/etc/,/var/lib/}prometheus
+
+#Скопируем утилиты prometheus и promtool в /usr/local/bin/
+ls prometheus-2.26.0.linux-amd64/
+cp  -iv  prometheus-2.26.0.linux-amd64/prom{etheus,tool}  /usr/local/bin/
+#Скопируем директории для того чтобы передать права пользователя Prometheus и настроить его запуск
+cp -riv prometheus-2.26.0.linux-amd64/{console{s,_libraries},prometheus.yml} /etc/prometheus/
+#Передадим права пользователя для Prometheus
+chown -Rv prometheus: /usr/local/bin/prom{etheus,tool} /etc/prometheus/ /var/lib/prometheus/
+#Проверим запуск Prometheus
+sudo -u prometheus /usr/local/bin/prometheus --config.file /etc/prometheus/prometheus.yml --storage.tsdb.path /var/lib/prometheus/ --web.console.templates=/etc/prometheus/consoles --web.console.libraries=/etc/prometheus/console_libraries
+#Далее в браузер ip через порт 9090
+192.168.31.226:90
+
+#Создадим файл для запуска демона system prometheus.service
+cat > /etc/systemd/system/prometheus.service
+
+[Unit]
+Description=Prometheus Monitoring
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=prometheus
+Group=prometheus
+Type=simple
+ExecStart=/usr/local/bin/prometheus \
+--config.file /etc/prometheus/prometheus.yml \
+--storage.tsdb.path /var/lib/prometheus \
+--web.console.templates=/etc/prometheus/consoles \
+--web.console.libraries=/etc/prometheus/console_libraries 
+ExecReload=/bin/kill -HUP $MAINPID
+
+[Install]
+WantedBy=multi-user.target
+
+#Запустим демон prometheus.service 
+systemctl daemon-reload && systemctl start prometheus.service && systemctl status prometheus
+
+#Скачиваем node_exporter (модуль для prometheus, который позволяет собирать информацию о состоянии машин, агент программа для отслеживания состояния машин)
+curl -LO https://github.com/prometheus/node_exporter/releases/download/v1.1.2/node_exporter-1.1.2.linux-amd64.tar.gz
+
+#Разархивируем  
+tar -xvf node_exporter-1.1.2.linux-amd64.tar.gz
+Удаляем архив
+rm -rf node_exporter-1.1.2.linux-amd64.tar.gz
+#Допишем в конфиг /etc/prometheus/prometheus.yml
+nano /etc/prometheus/prometheus.yml
+
+  - job_name: 'node_exporter'
+    scrape_interval: 5s
+    static_configs:
+    - targets: ['localhost:9100']
+	
+systemctl restart prometheus.service && systemctl status prometheus.service	
+
+# Устанавливаем node_exporter 
+cp -vi node_exporter-1.1.2.linux-amd64/node_exporter /usr/local/bin/node_exporter
+
+#Передаем права node_exporter одноименному пользователю
+chown node_exporter: /usr/local/bin/node_exporter
+
+#Создадим юнит для node_exporter
+cat > /etc/systemd/system/node_exporter.service
+
+[Unit]
+Description=Node Exporter
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=node_exporter
+Group=node_exporter
+Type=simple
+ExecStart=/usr/local/bin/node_exporter
+
+[Install]
+WantedBy=multi-user.target
+
+#Перезапускаем все демоны и запускаем node_exporter
+systemctl daemon-reload
+systemctl start node_exporter.service
+
+#Если зайдем на хост 9100 node_exporter, то увидим метрики
+curl localhost:9100
+
+#Проверим работу node_exporter и копируем любой запрос 
+http://192.168.31.226:9100/metrics
+копируем запрос
+node_filesystem_files_free{device="/dev/mapper/centos-root",fstype="xfs",mountpoint="/"}
+вставляем его в поиск и увидим отобразится код запроса
+192.168.31.226:9090
+=======================================
+#Установка grafana
+#Сделаем настройку графаны (скачиваем)
+curl -LO https://dl.grafana.com/oss/release/grafana-8.3.4-1.x86_64.rpm
+
+#Устанавливаем скачанный пакет
+yum install ./grafana-8.3.4-1.x86_64.rpm
+#Перезапускаем все демоны и запускаем grafana-server
+systemctl daemon-reload && systemctl start grafana-server && systemctl status grafana-server
+
+#Заходим в grafana через браузер порт 3000
+192.168.31.226:3000
+Пользователь: admin
+Пароль: admin

@@ -1,0 +1,160 @@
+10:50:03 От Sergey DIY до Все:
+	Здравствуйте все. Может кто-то знает как добавить в автозапуск ssh агент и ключ туда завести навсегда? Мучиться надо в гробу и при случае закрыть крышку.
+10:51:33 От Sergey DIY до Все:
+	Ничего лучше костылей не знаю и в руки не идёт.
+10:54:15 От Sergey DIY до Все:
+	Докинуть команды на запуск агента и добавление ключа туда? Здесь не видно добавления ключа. https://gist.github.com/reskwer/7a34985302c0fd578da701188afa1e09
+10:56:36 От Денис Федоров до Все:
+	keychain
+10:56:38 От Денис Федоров до Все:
+	https://wiki.gentoo.org/wiki/Keychain/ru
+10:56:56 От Денис Федоров до Все:
+	https://wiki.gentoo.org/wiki/Keychain/ru#.D0.92.D1.8B.D0.B6.D0.B8.D0.BC.D0.B0.D0.BD.D0.B8.D0.B5_.D0.BF.D0.BE.D1.81.D0.BB.D0.B5.D0.B4.D0.BD.D0.B5.D0.B9_.D0.BA.D0.B0.D0.BF.D0.BB.D0.B8_.D1.83.D0.B4.D0.BE.D0.B1.D1.81.D1.82.D0.B2.D0.B0_.D0.B8.D0.B7_ssh-agent
+10:58:58 От Sergey DIY до Все:
+	Спасибо, пропробую. Проблемы с авторизацией в Github и голова не выдерживает этого всего.
+11:00:46 От Konstantin Remizov до Все:
+	Доброе утро.
+11:01:00 От Рустем до Все:
+	++
+11:01:01 От Konstantin Remizov до Все:
+	+
+11:01:02 От Aleksey Borisov до Все:
+	+
+11:01:05 От Sergey DIY до Все:
+	+
+11:01:39 От Рустем до Все:
+	как приборная доска в автомобиле
+11:01:54 От Sergey DIY до Все:
+	Отслеживание работы сервисов.
+11:02:24 От Sergey DIY до Все:
+	Сам помогал с автоматикой, знаю.
+11:03:54 От Konstantin Remizov до Все:
+	-
+11:03:55 От Sergey Shagalov до Все:
+	_
+11:03:57 От alimniyazov до Все:
+	Zabix
+11:04:03 От Александра до Все:
+	-
+11:04:03 От Aleksey Borisov до Все:
+	zabbix
+11:04:06 От Sergey DIY до Все:
+	-
+11:04:24 От alimniyazov до Все:
+	Grafana
+11:04:25 От Рустем до Все:
+	наблюдаем, но не настраивали
+11:04:47 От alimniyazov до Все:
+	Графическая оболочка для забикса
+11:11:44 От Aleksey Borisov до Все:
+	+
+11:11:56 От Sergey Shagalov до Все:
+	пока понятно
+11:12:05 От Elena Pirozhenko до Все:
+	понятно
+11:12:15 От Sergey DIY до Все:
+	пока понятно, похоже на железный вариант
+11:18:10 От alimniyazov до Все:
+	+
+11:18:10 От Sergey Shagalov до Все:
+	+
+11:18:11 От Рустем до Все:
+	+
+11:18:15 От Sergey DIY до Все:
+	+
+11:18:33 От Денис Федоров до Все:
+	yum install -y {jnet,h,io,if}top iptraf nmon
+11:21:15 От Денис Федоров до Все:
+	https://github.com/prometheus/prometheus/releases
+11:22:29 От Денис Федоров до Все:
+	https://github.com/prometheus/prometheus/releases/download/v2.32.1/prometheus-2.32.1.linux-amd64.tar.gz
+11:25:08 От Elena Pirozhenko до Все:
+	-
+11:25:08 От alimniyazov до Все:
+	-
+11:25:08 От Sergey Shagalov до Все:
+	+
+11:25:14 От Konstantin Remizov до Все:
+	-
+11:25:16 От Sergey DIY до Все:
+	-
+11:25:18 От Рустем до Все:
+	-
+11:29:06 От Konstantin Remizov до Все:
+	+
+11:29:07 От Elena Pirozhenko до Все:
+	+
+11:29:08 От Sergey DIY до Все:
+	+
+11:29:08 От Рустем до Все:
+	+
+11:36:37 От Elena Pirozhenko до Все:
+	-
+11:36:44 От Konstantin Remizov до Все:
+	-
+11:40:43 От Elena Pirozhenko до Все:
+	понятно
+11:43:57 От Денис Федоров до Все:
+	sudo -u prometheus /usr/local/bin/prometheus --config.file /etc/prometheus/prometheus.yml --storage.tsdb.path /var/lib/prometheus/ --web.console.templates=/etc/prometheus/consoles --web.console.libraries=/etc/prometheus/console_libraries
+11:52:24 От Денис Федоров до Все:
+	vim /etc/systemd/system/prometheus.service
+11:58:33 От Денис Федоров до Все:
+	systemctl daemon-reload && systemctl start grafana-server && systemctl status grafana-server
+12:00:09 От Aleksey Borisov до Все:
+	+
+12:00:14 От Sergey Shagalov до Все:
+	Вроде понятно
+12:00:23 От Elena Pirozhenko до Все:
+	понятно, но самостоятельно вряд ли
+12:00:30 От Aleksey Borisov до Все:
+	еще автоматизируем )
+12:00:54 От Elena Pirozhenko до Все:
+	согласна про "как это устроено"
+12:01:19 От Sergey DIY до Все:
+	можно, только большую часть в скрипт запихну и vim нафиг
+12:02:30 От Денис Федоров до Все:
+	https://github.com/prometheus/node_exporter/releases/
+12:08:55 От Elena Pirozhenko до Все:
+	node_exporter устанавливается на сервера-клиенты, которые мы будем мониторить?
+12:15:46 От Sergey Shagalov до Все:
+	Вы сменили пользователя на /usr/local/bin, а не /usr/local/bin/node_exporter?
+12:21:02 От Денис Федоров до Все:
+	https://grafana.com/grafana/download?pg=get&plcmt=selfmanaged-box1-cta1
+12:25:05 От Sergey Shagalov до Все:
+	_
+12:25:08 От Sergey DIY до Все:
+	-
+12:25:08 От Elena Pirozhenko до Все:
+	как наполнять prometheus?
+12:25:38 От Aleksey Borisov до Все:
+	У меня вопрос под конец занятия: какие системные требования для такого комплекта если у меня допустим 100 хостов для мониторинга?
+12:26:35 От Elena Pirozhenko до Все:
+	ка настроить пороги в prometheus?
+12:28:06 От Serge до Все:
+	Как собирать метрики с сетевого оборудования? Например RouterOS. 
+12:28:25 От Elena Pirozhenko до Все:
+	как настроить пороговые значения для сработки алармов
+12:28:50 От Денис Федоров до Все:
+	https://github.com/prometheus/snmp_exporter
+12:33:07 От Денис Федоров до Все:
+	https://grafana.com/grafana/dashboards
+12:43:04 От Денис Федоров до Все:
+	https://otus.ru/polls/33117/
+12:43:04 От Денис Федоров до Все:
+	https://otus.ru/polls/33117/
+12:43:05 От Денис Федоров до Все:
+	https://otus.ru/polls/33117/
+12:43:05 От Денис Федоров до Все:
+	https://otus.ru/polls/33117/
+12:43:07 От Денис Федоров до Все:
+	https://otus.ru/polls/33117/
+12:43:56 От Aleksey Borisov до Все:
+	Спасибо, как всегда инфа очень полезная!
+12:43:57 От Sergey Shagalov до Все:
+	Спасибо!
+12:44:11 От Konstantin Remizov до Все:
+	Спасибо!
+12:44:16 От Sergey DIY до Все:
+	Спасибо!
+12:44:50 От Elena Pirozhenko до Все:
+	Спасибо!

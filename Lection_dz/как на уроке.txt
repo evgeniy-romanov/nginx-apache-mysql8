@@ -1,0 +1,61 @@
+master
+nano  /etc/my.cnf
+# выбираем ID сервера, произвольное число, лучше начинать с 1
+server_id = 1
+
+systemctl restart mysqld
+
+mysql -u root -p
+Qaz/2152
+Далее создаем и назначаем права пользователю для реплики:
+CREATE USER replicuser@'%' IDENTIFIED WITH 'caching_sha2_password' BY 'Qaz/2152';
+GRANT REPLICATION SLAVE ON *.* TO replicuser@'%';
+
+# Смотрим пользователей
+SELECT User, Host FROM mysql.user;
+
+# Смотрим статус Мастера
+SHOW MASTER STATUS;
+
+
+slave
+# Удаляем  конфигурационный файл auto.cnf
+rm -rf /var/lib/mysql/auto.cnf
+nano  /etc/my.cnf
+# выбираем ID сервера, произвольное число, лучше начинать с 1
+server_id = 2
+
+systemctl restart mysqld
+
+mysql -u root -p
+Qaz/2152
+#Прописываем в слейве id мастера,  бинлог и позицию бинлога
+Stop slave;
+CHANGE MASTER TO MASTER_HOST='192.168.31.125', MASTER_USER='replicuser', MASTER_PASSWORD='Qaz/2152', MASTER_LOG_FILE = 'mysql-bin.000005', MASTER_LOG_POS = 1094, GET_MASTER_PUBLIC_KEY = 1;
+После этого запускаем репликацию на Слейве:
+START SLAVE;
+SHOW SLAVE STATUS\G
+
+
+master
+
+mysql -u root -p
+ Qaz/2152
+ CREATE DATABASE wordpress;
+ CREATE USER wordpressuser@localhost IDENTIFIED BY 'Qaz/2152';
+ GRANT ALL PRIVILEGES ON wordpress.* TO wordpressuser@localhost;
+
+nano  /etc/my.cnf
+log_bin = /var/log/mysql/mysql-bin.log
+
+systemctl  restart  mysqld
+
+
+Slave
+
+stop slave;
+ 
+CHANGE MASTER TO MASTER_HOST='192.168.31.133', MASTER_USER='replicuser', MASTER_PASSWORD='Qaz/2152', MASTER_LOG_FILE = 'mysql-bin.000001', MASTER_LOG_POS = 157, GET_MASTER_PUBLIC_KEY = 1;
+ 
+start slave;
+show slave status\G

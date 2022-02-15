@@ -1,0 +1,204 @@
+
+rpm -qa | grep mysql
+yum remove mysql-xxx-xxx
+find / -name mysql
+rm -rf запрошенное расположение файла
+rpm -qa | grep mariadb
+yum -y remove mariadb-libs.x86_64
+
+# Устанавливаем репозиторий EPEL:
+yum install epel-release
+
+# Устанавливаем Nginx:
+yum install nginx
+# Запускаем Nginx:
+systemctl start nginx
+systemctl enable nginx
+
+# Устанавливаем Apache:
+yum install httpd
+#Изменим порт в конфигурационном файле с 80 на 8080 :
+nano /etc/httpd/conf/httpd.conf 
+Listen 8080
+Listen 8081
+Listen 8082
+# Запускаем Apache:
+systemctl start httpd
+systemctl enable httpd
+
+#Отключаем SELinux
+setenforce 0
+# Отключаем firewalld
+systemctl stop firewalld
+systemctl disable firewalld
+# Проверка портов
+ss –ntlp
+
+========================================
+#Устанавливаем mysql, если ошибка с GPG.... что то там решение ниже
+rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2022
+#Установка репозитория Oracle MySQL 8.0
+Sudo rpm -Uvh https://repo.mysql.com/mysql80-community-release-el7-3.noarch.rpm
+# Включаем репозиторий
+sed -i 's/enabled=1/enabled=0/' /etc/yum.repos.d/mysql-community.repo
+# Устанавливаем MySQL
+yum --enablerepo=mysql80-community install mysql-community-server
+# Запускаем mysqld
+systemctl start mysqld
+systemctl enable mysqld
+# Проверка портов
+ss -ntlp
+
+# Ставим имя хоста master
+hostnamectl set-hostname localhost-master
+reboot
+# Выясняем временный пароль
+grep "A temporary password" /var/log/mysqld.log
+
+# Запускаем скрипт безопасности для MySQL
+mysql_secure_installation
+# Заходим с паролем
+mysql  -u root  -p
+Qaz/2152
+#Смена пароля по необходимости
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'Qaz/2152';
+# Создаём пользователя для реплики
+CREATE USER repl@'%' IDENTIFIED WITH 'caching_sha2_password' BY 'oTUSlave#2022'; 
+# Даём ему права на репликацию
+GRANT REPLICATION SLAVE ON *.* TO repl@'%';
+# Смотрим пользователей
+SELECT User, Host FROM mysql.user;
+
+
+#Экспортировал виртуалку в папку nginx_mysql_httpd
+================================================
+yum install wget
+yum install rsync
+#Устанавливаем php
+yum install -y http://rpms.remirepo.net/enterprise/remi-release-7.rpm
+yum --enablerepo=remi-php74 install php php-pdo php-fpm php-gd php-mbstring php-mysql php-curl php-mcrypt php-json -y
+php -v
+================================================
+Настройка обратного проксисервера
+#Удаляем файл welcome.conf в директории /etc/httpd/conf.d
+rm -rf /etc/httpd/conf.d/welcome.conf
+#Создаем файл wordpress.conf в директории /etc/httpd/conf.d с содержимым
+cat > /etc/httpd/conf.d/wordpress.conf
+#Вставляем
+<VirtualHost *:8080>
+   ServerName yourdomain.name
+   DocumentRoot /var/www/html/wordpress
+   TransferLog  /var/log/httpd/access_8080
+    <Directory /var/www/html/wordpress>
+        AllowOverride All
+        DirectoryIndex index.php index.html
+        Options FollowSymLinks
+        Require all granted
+    </Directory>
+</VirtualHost>
+#-----------------------------------------
+<VirtualHost *:8081>
+   ServerName yourdomain.name
+   DocumentRoot /var/www/html/wordpress
+   TransferLog  /var/log/httpd/access_8081
+    <Directory /var/www/html/wordpress>
+        AllowOverride All
+        DirectoryIndex index.php index.html
+        Options FollowSymLinks
+        Require all granted
+    </Directory>
+</VirtualHost>
+#-----------------------------------------
+<VirtualHost *:8082>
+   ServerName yourdomain.name
+   DocumentRoot /var/www/html/wordpress
+   TransferLog  /var/log/httpd/access_8082
+    <Directory /var/www/html/wordpress>
+        AllowOverride All
+        DirectoryIndex index.php index.html
+        Options FollowSymLinks
+        Require all granted
+    </Directory>
+</VirtualHost>
+
+#В /etc/nginx/conf.d/ создаем файл wordpress.conf
+cat > /etc/nginx/conf.d/wordpress.conf
+#Вставляем
+
+upstream backend {
+    server 127.0.0.1:8080;
+    server 127.0.0.1:8081;
+    server 127.0.0.1:8082;
+}
+
+
+server {
+    listen 80;
+    server_name _;
+
+    location / {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+#Закомментировать сервер
+nano /etc/nginx/default.d/nginx.conf
+
+
+=================================
+УСТАНОВКА WORDPRESS 
+1: Создайте базу данных MySQL и пользователя для WordPress
+mysql -u root -p
+#создать БД для WordPress
+CREATE DATABASE wordpress;
+#Создадим пользователя для Wordpress и пароль
+CREATE USER 'wordpressevgeniy'@'localhost' IDENTIFIED BY 'Qaz/2152';
+#предоставим полные права на использование БД для WordPress
+GRANT ALL PRIVILEGES ON wordpress.* TO 'wordpressevgeniy'@'localhost';
+#обновить привилегии
+FLUSH PRIVILEGES;
+exit
+
+2: Установка WordPress
+#Для корректной работы WordPress нужно установить модуль PHP
+yum install php-gd
+#Затем нужно перезапустить Apache
+service httpd restart
+#скачать последнюю версию WordPress, просто наберите:
+cd ~
+wget http://wordpress.org/latest.tar.gz
+#извлечь файлы из архива
+tar xzvf latest.tar.gz
+#В домашнем каталоге появится каталог wordpress. Чтобы завершить установку, 
+нужно перенести распакованные файлы в root каталог Apache
+rysnc скопирует все содержимое распакованного каталога в каталог веб-сервера /var/www/html/
+rsync -avP ~/wordpress/ /var/www/html/
+#нужно добавить отдельную папку для хранения файлов WordPress
+mkdir /var/www/html/wp-content/uploads
+#установить привилегии на файлы и папки WordPress для повышения безопасности
+chown -R apache:apache /var/www/html/*
+chcon -Rv --type=httpd_sys_rw_content_t /var/www/html/*
+Теперь веб-сервер имеет возможность создавать и изменять файлы WordPress,
+а также позволит подгружать контент на сервер.
+
+3: Настройка WordPress
+#Перейдите в root каталог Apache, в котором установлен WordPress:
+cd /var/www/html
+#скопировать конфигурационный файл WordPress wp-config.php на место конфигурационного файла по умолчанию
+cp wp-config-sample.php wp-config.php
+#
+nano wp-config.php
+
+// ** Database settings - You can get this info from your web host ** //
+/** The name of the database for WordPress */
+define( 'DB_NAME', 'wordpress' );
+
+/** MySQL database username */
+define( 'DB_USER', 'wordpressevgeniy' );
+
+/** MySQL database password */
+define( 'DB_PASSWORD', 'Qaz/2152' );

@@ -1,0 +1,360 @@
+
+rpm -qa | grep mysql
+yum remove mysql-xxx-xxx
+find / -name mysql
+rm -rf запрошенное расположение файла
+rpm -qa | grep mariadb
+yum -y remove mariadb-libs.x86_64
+
+# Устанавливаем репозиторий EPEL:
+yum install epel-release
+
+# Устанавливаем Nginx:
+yum install nginx
+# Запускаем Nginx:
+systemctl start nginx
+systemctl enable nginx
+
+#Отключаем SELinux
+setenforce 0
+
+# Устанавливаем Apache:
+yum install httpd
+#Изменим порт в конфигурационном файле с 80 на 8080 :
+nano /etc/httpd/conf/httpd.conf 
+Listen 8080
+Listen 8081
+Listen 8082
+# Запускаем Apache:
+systemctl start httpd
+systemctl enable httpd
+
+
+# Отключаем firewalld
+systemctl stop firewalld
+systemctl disable firewalld
+# Проверка портов
+ss –ntlp
+
+========================================
+#Устанавливаем mysql, если ошибка с GPG.... что то там решение ниже
+rpm --import https://repo.mysql.com/RPM-GPG-KEY-mysql-2022
+#Установка репозитория Oracle MySQL 8.0
+Sudo rpm -Uvh https://repo.mysql.com/mysql80-community-release-el7-3.noarch.rpm
+# Включаем репозиторий
+sed -i 's/enabled=1/enabled=0/' /etc/yum.repos.d/mysql-community.repo
+# Устанавливаем MySQL
+yum --enablerepo=mysql80-community install mysql-community-server
+# Запускаем mysqld
+systemctl start mysqld
+systemctl enable mysqld
+# Проверка портов
+ss -ntlp
+==================
+# Ставим имя хоста master
+#hostnamectl set-hostname localhost-master
+#reboot
+# Выясняем временный пароль
+#grep "A temporary password" /var/log/mysqld.log
+
+# Запускаем скрипт безопасности для MySQL
+#mysql_secure_installation
+# Заходим с паролем
+#mysql  -u root  -p
+Qaz/2152
+#Смена пароля по необходимости
+#ALTER USER 'root'@'localhost' IDENTIFIED BY 'Qaz/2152';
+
+====================================
+
+Устанавливаем php
+yum install -y http://rpms.remirepo.net/enterprise/remi-release-7.rpm
+yum --enablerepo=remi-php74 install php php-pdo php-fpm php-gd php-mbstring php-mysql php-curl php-mcrypt php-json -y
+php -v
+
+Ставишь апач, добавляешь конфиг
+
+
+
+rm -rf /etc/httpd/conf.d/welcome.conf
+cat > /etc/httpd/conf.d/wordpress.conf
+#Вставляем
+
+<VirtualHost *:8080>
+   ServerName yourdomain.name
+   DocumentRoot /var/www/html/wordpress
+   TransferLog  /var/log/httpd/access_8080
+    <Directory /var/www/html/wordpress>
+        AllowOverride All
+        DirectoryIndex index.php index.html
+        Options FollowSymLinks
+        Require all granted
+    </Directory>
+</VirtualHost>
+#-----------------------------------------
+<VirtualHost *:8081>
+   ServerName yourdomain.name
+   DocumentRoot /var/www/html/wordpress
+   TransferLog  /var/log/httpd/access_8081
+    <Directory /var/www/html/wordpress>
+        AllowOverride All
+        DirectoryIndex index.php index.html
+        Options FollowSymLinks
+        Require all granted
+    </Directory>
+</VirtualHost>
+#-----------------------------------------
+<VirtualHost *:8082>
+   ServerName yourdomain.name
+   DocumentRoot /var/www/html/wordpress
+   TransferLog  /var/log/httpd/access_8082
+    <Directory /var/www/html/wordpress>
+        AllowOverride All
+        DirectoryIndex index.php index.html
+        Options FollowSymLinks
+        Require all granted
+    </Directory>
+</VirtualHost>
+
+Добавляешь index.php с php info в /var/www/html/wordpress
+mkdir /var/www/html/wordpress
+echo "<?php phpinfo(); ?>" > /var/www/html/wordpress/index.php
+
+ chown -R apache:apache /var/www/html/wordpress
+systemctl restart httpd
+====================================
+обратный прокси сервер
+#В /etc/nginx/conf.d/ создаем файл wordpress.conf
+cat > /etc/nginx/conf.d/wordpress.conf
+#Вставляем
+upstream backend {
+    server 127.0.0.1:8080;
+    server 127.0.0.1:8081;
+    server 127.0.0.1:8082;
+}
+
+
+server {
+    listen 80;
+    server_name _;
+
+    location / {
+        proxy_pass http://backend;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
+#Закомментировать сервер
+nano /etc/nginx/nginx.conf
+systemctl restart nginx
+systemctl enable httpd
+shutdown -h now
+Экспорт Работает_nginx.ova - обратный прокси сервер
+=====================================
+
+
+rm -rf /var/www/html/wordpress/index.php
+ cd /var/www/html/
+ yum install wget
+ wget https://ru.wordpress.org/latest-ru_RU.tar.gz
+ tar xzvf latest-ru_RU.tar.gz
+ rm -rf latest-ru_RU.tar.gz
+ chown -R apache:apache /var/www/html/*
+ 
+ mysql -u root -p
+ Qaz/2152
+ CREATE DATABASE wordpress;
+ CREATE USER replicuseruser@localhost IDENTIFIED BY 'Qaz/2152';
+ GRANT ALL PRIVILEGES ON wordpress.* TO replicuser@localhost;
+ FLUSH PRIVILEGES;
+ exit
+ 
+ #Заходим в браузер вводим ip
+ 192.168.31.226
+ #Вносим данные на первой странице
+ // ** Database settings - You can get this info from your web host ** //
+/** The name of the database for WordPress */
+define( 'DB_NAME', 'wordpress' );
+
+/** MySQL database username */
+define( 'DB_USER', 'replicuser' );
+
+/** MySQL database password */
+define( 'DB_PASSWORD', 'Qaz/2152' );
+
+#На 2 странице
+#Название сайта	
+wordpress
+#Имя пользователя
+replicuser
+#Пароль
+Tfhjvfyjdtt86
+#Email	
+evgeniy.romanov@mail.ru
+ Ввод
+ обновляем и вводим заново Ip
+ Экспорт - Работает_nginx.ova
+ ================================
+ 
+ mkdir /var/log/mysql
+chown mysql:mysql /var/log/mysql
+systemctl  restart  mysqld
+ 
+ 
+ #настройка репликации master-slave
+ #Клонируем ОС
+ 
+ master
+#Ставим имя хоста master
+#hostnamectl set-hostname localhost
+#reboot
+ 
+#Заходим в Mysql
+mysql  -u root  -p
+Qaz/2152
+ # Создаём пользователя для реплики
+CREATE USER replicuser@'%' IDENTIFIED WITH 'caching_sha2_password' BY 'Qaz/2152'; 
+# Даём ему права на репликацию
+ GRANT REPLICATION SLAVE ON *.* TO replicuser@'%';
+FLUSH PRIVILEGES;
+# Смотрим пользователей
+SELECT User, Host FROM mysql.user;
+exit
+#Удаление пользователя
+#DROP USER user@localhost;
+
+nano  /etc/my.cnf
+
+# default-authentication-plugin=mysql_native_password
+
+server_id = 1
+log_bin = /var/log/mysql/mysql-bin.log   #log_bin = /var/log/mysql/mysql-bin.log
+binlog_do_db = wordpress                 #replicate-do-db = wordpress
+
+datadir=/var/lib/mysql
+socket=/var/lib/mysql/mysql.sock
+
+===============================
+Slave
+
+hostnamectl set-hostname localhost-slave
+reboot
+ 
+# Заходим с паролем
+#mysql  -u root  -p
+#Qaz/2152
+#exit
+# Удаляем  конфигурационный файл auto.cnf
+rm -rf /var/lib/mysql/auto.cnf
+#Редактируем server_id  по значению больше мастера
+nano  /etc/my.cnf
+
+# https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_default_authentication_plugin
+# default-authentication-plugin=mysql_native_password
+
+server-id = 2
+relay-log = /var/lib/mysql/mysql-relay-bin
+relay-log-index = /var/lib/mysql/mysql-relay-bin.index
+replicate-do-db = wordpress
+
+datadir=/var/lib/mysql
+socket=/var/lib/mysql/mysql.sock
+
+systemctl  restart  mysqld
+CREATE USER 'replicuser'@'localhost' IDENTIFIED BY 'Qaz/2152';
+
+# Заходим с паролем
+mysql  -u root  -p
+Qaz/2152
+ 
+#Проверяем изменения: 
+select @@server_id; 
+
+===============================================
+# Смотрим статус Мастера
+SHOW MASTER STATUS;
+(mysql-bin.000001 position 157)
+exit
+
+# Выясняем ip мастра для последующей настройки
+ip a 
+192.168.31.226
+Копируем wordpres.sql на слейв
+#mysqldump -u root -p --master-data=2 wordpress > wordpres.sql
+Qaz/2152
+через filezilla скидываем  wordpres.sql в слейв /var/log/mysql/
+#Смотреть пользователей
+#SELECT User, Host FROM mysql.user;
+
+
+
+===============================================
+Slave
+#mysql -u root -p
+#Qaz/2152
+#Прописываем в слейве id мастера,  бинлог и позицию бинлога
+Stop slave;
+CHANGE MASTER TO MASTER_HOST='192.168.31.226', MASTER_USER='replicuser', MASTER_PASSWORD='Qaz/2152', MASTER_LOG_FILE='mysql-bin.000001', MASTER_LOG_POS=157, GET_MASTER_PUBLIC_KEY = 1;
+Start slave;
+Show slave status\G
+===============================================
+Master
+#Создадим базу данных на мастере
+Create database otus;
+Show databases;
+#Создадим таблицу в базе данных otus и добавим в нее данные
+Use otus;
+Create table test_tbl  (id int);
+Insert into test_tbl values (1), (2), (3), (4), (5), (6);
+select * from test_tbl;
+================================================
+Slave
+#Проверим репликацию баз на слейве
+Show databases;
+Use otus;
+Show tables;
+Select  *  from  test_tbl;
+===================================
+Master
+show master status;
+====================================
+Slave
+Show slave status\G
+
+Сверяем бинлоги и позицию
+Все отлично
+==================================
+Master
+
+Nano  /etc/my.cnf
+# выбираем ID сервера, произвольное число, лучше начинать с 1
+server-id = 1
+# путь к бинарному логу
+log_bin = /var/log/mysql/mysql-bin.log
+# название Вашей базы данных, которая будет реплицироваться
+binlog_do_db = newdatabase
+
+mkdir /var/log/mysql 
+chown mysql:mysql /var/log/mysql
+systemctl restart mysqld
+
+CREATE USER 'user'@'localhost' IDENTIFIED BY 'secret';
+GRANT ALL PRIVILEGES ON dbname.* TO 'user'@'localhost';
+FLUSH PRIVILEGES;
+
+
+
+
+
+
+
+
+
+ 
+  https://proft.me/2011/07/19/mysql-poleznye-komandy-i-nastrojki/
+
+ 
+ 

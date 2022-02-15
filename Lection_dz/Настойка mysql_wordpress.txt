@@ -1,0 +1,71 @@
+#master
+yum install tcpdump
+mysql -u root -p
+Qaz/2152
+Далее блокируем все таблицы в нашей базе данных:
+
+USE wordpress;
+FLUSH TABLES WITH READ LOCK;
+Проверяем статус Мастер-сервера:
+SHOW MASTER STATUS;
+exit
+#сделаем дамп базы данных:
+mysqldump -u root -p wordpress > wordpress.sql
+Qaz/2152
+Разблокируем таблицы в консоли mysql:
+mysql -u root -p
+Qaz/2152
+UNLOCK TABLES;
+
+#Переходим на слэйв
+mysql -u root -p
+Qaz/2152
+В консоли mysql на Слейве создаем базу с таким же именем, как и на Мастере:
+CREATE DATABASE wordpress;
+exit
+После этого загружаем дамп (из bash):
+yum install tcpdump
+#Переходим на master
+scp wordpress.sql 192.168.31.123:/tmp
+#пароль root
+2152
+
+
+#Переходим на слэйв
+scp wordpress.sql 192.168.31.196:/tmp < wordpress.sql
+2152
+
+nano /etc/my.cnf
+
+# https://dev.mysql.com/doc/refman/8.0/en/server-system-variables.html#sysvar_default_authentication_plugin
+# default-authentication-plugin=mysql_native_password
+
+# выбираем ID сервера, произвольное число, лучше начинать с 1
+server-id = 2
+# путь к relay логу
+relay-log = /var/log/mysql/mysql-relay-bin.log
+# Путь к bin логу на Мастере
+log_bin = /var/log/mysql/mysql-bin.log
+# название Вашей базы данных, которая будет реплицироваться
+binlog_do_db = wordpress
+
+datadir=/var/lib/mysql
+socket=/var/lib/mysql/mysql.sock
+
+mysql -u root -p
+Qaz/2152
+
+CHANGE MASTER TO MASTER_HOST='192.168.31.196', MASTER_USER='replicuser', MASTER_PASSWORD='Qaz/2152', MASTER_LOG_FILE = 'mysql-bin.000002', MASTER_LOG_POS = 40773;
+START SLAVE;
+SHOW SLAVE STATUS\G
+
+#SELECT User, Host FROM mysql.user;
+
+
+
+
+
+
+
+
+https://highload.today/kak-nastroit-mysql-master-slave-replikatsiyu-3f/

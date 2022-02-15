@@ -1,0 +1,239 @@
+#Обновить Centos 7
+yum update
+#Обновить ядро
+Чтобы включить репозиторий, перейдите в свой терминал и выполните команду:
+rpm --import https://www.elrepo.org/RPM-GPG-KEY-elrepo.org
+установить репозиторий Elrepo:
+rpm -Uvh https://www.elrepo.org/elrepo-release-7.0-3.el7.elrepo.noarch.rpm
+установить новейший основной выпуск ядра, вызовите команду:
+yum --enablerepo=elrepo-kernel install kernel-ml
+shutdown -r now
+Во время перезагрузки выбираем последней версии ядро
+Установим версию ядра по умолчанию
+ изменяем файл nano /etc/default/grub
+ GRUB_DEFAULT=0
+ Сохраните и выйдите из файла конфигурации и перенастройте загрузчик grub, выполнив команду:
+ grub2-mkconfig -o /boot/grub2/grub.cfg
+#Установка git
+yum install git
+#Создадим ключ ssh
+ssh-keygen
+#Копируем код для создания ключа на github и вставляем в гит
+cat /root/.ssh/id_rsa.pub
+cd /home/evgeniy/
+mkdir git-hub
+cd git-hub/
+#Копируем SSH на сайте github.com/evgeniy-romanov/nginx-apache
+#Скачаем репозиторий на Centos
+git clone https://github.com/evgeniy-romanov/nginx-apache.git
+#Копируем конфигурационный файл nginx в скачанный репозиторий  -nginx-
+==============================================
+# Устанавливаем репозиторий EPEL:
+yum install epel-release
+# Устанавливаем Nginx:
+yum install nginx
+systemctl start nginx
+systemctl enable nginx.service
+# Устанавливаем Apache:
+yum install httpd
+nano /etc/httpd/conf/httpd.conf
+меняем порт listen 8080 и servername 127.0.0.1
+systemctl start httpd
+systemctl enable httpd
+ss -ntlp
+ps afx
+# Отключаем SELinux
+Подключаемся через FileZilla
+Копируем скрипт селинукс в папку cd /home/evgeniy/filezilla
+Запускаем и отключаем
+sh Script_selinux_alexandr.sh
+# Отключаем firewalld
+systemctl stop firewalld
+systemctl disable firewalld
+#Настраиваем конфигурационные файлы nginx и apache с балансировкой
+cd /home/evgeniy/git-hub/nginx-apache/
+# Apаche default DocumentRoot (настраиваем apache)
+cp index.html /var/www/html/index.html
+nano /var/www/html/index.html
+mkdir /var/www/html1/
+cp index.html /var/www/html1/index.html
+Измеяем порт 8080 на 8081
+nano /var/www/html1/index.html 
+mkdir /var/www/html2/
+cp index.html /var/www/html2/index.html
+Измеяем порт 8080 на 8082
+nano /var/www/html2/index.html 
+
+cp 8080.conf /etc/httpd/conf.d/
+cp 8081.conf /etc/httpd/conf.d/
+cp 8082.conf /etc/httpd/conf.d/
+ls -la /etc/httpd/conf.d/
+#Настроиваем перенаправление обращения nginx на upstream для BackEnd apache:
+mv nginx.conf /etc/nginx/
+mv default.conf /etc/nginx/conf.d/
+#меняем ip в default.conf
+nano /etc/nginx/conf.d/default.conf
+nginx -t
+#Перезагружаем nginx
+systemctl reload nginx
+#Перезагружаем apache
+systemctl reload httpd
+#Проверим через curl localhost несколько раз и в браузере
+
+#Установка и настройка Mysql
+rpm -qa | grep mysql
+yum remove mysql-xxx-xxx
+find / -name mysql
+rm -rf запрошенное расположение файла
+rpm -pa | grep mariadb
+yum -y remove mariadb-libs.x86_64
+#Установка репозитория Oracle MySQL 8.0
+Sudo rpm -Uvh https://repo.mysql.com/mysql80-community-release-el7-3.noarch.rpm
+# Включаем репозиторий
+sed -i 's/enabled=1/enabled=0/' /etc/yum.repos.d/mysql-community.repo
+# Устанавливаем MySQL
+yum --enablerepo=mysql80-community install mysql-community-server
+
+(mv mysql-community.repo /etc/yum.repos.d/mysql-community.repo)
+# Запускаем
+systemctl start mysqld
+# Ставим в автозагрузку
+systemctl enable mysqld
+# Проверка портов
+ss -ntlp
+# Клонируем виртуальную машину  Сentos 7 – master  в Сentos 7 – slave
+# Ставим имя хоста master
+hostnamectl set-hostname localhost-master
+reboot
+# Выясняем временный пароль
+grep "A temporary password" /var/log/mysqld.log
+
+# Запускаем скрипт безопасности для MySQL
+mysql_secure_installation
+# Заходим с паролем
+mysql  -u root  -p
+Qaz/2152
+#Смена пароля по необходимости
+ALTER USER 'root'@'localhost' IDENTIFIED BY 'Qaz/2152';
+# Создаём пользователя для реплики
+CREATE USER repl@'%' IDENTIFIED WITH 'caching_sha2_password' BY 'oTUSlave#2022'; 
+# Даём ему права на репликацию
+GRANT REPLICATION SLAVE ON *.* TO repl@'%';
+# Смотрим пользователей
+SELECT User, Host FROM mysql.user;
+
+Переходим в Slave
+# Ставим имя хоста slave
+hostnamectl set-hostname mysql-slave
+reboot
+# Выясняем временный пароль
+grep "A temporary password" /var/log/mysqld.log
+
+# Запускаем скрипт безопасности для MySQL  и устанавливаем пароль
+mysql_secure_installation
+# Заходим с паролем
+mysql -u root -p
+exit
+# Удаляем  конфигурационный файл auto.cnf
+rm -rf /var/lib/mysql/auto.cnf
+#Редактируем server_id = 2 по значению больше мастера (прописываем над datadir)
+nano  /etc/my.cnf
+systemctl restart mysqld
+#Проверим server_id = 2
+select @@server_id;
+# Смотрим статус Мастера
+SHOW MASTER STATUS;
+# Выясняем ip мастера для последующей настройки
+ip a   192.168.31.44
+#Прописываем в слейве id мастера,  бинлог и позицию бинлога
+Stop slave;
+CHANGE MASTER TO MASTER_HOST='192.168.31.50', MASTER_USER='repl', MASTER_PASSWORD='oTUSlave#2021', MASTER_LOG_FILE='binlog.000003', MASTER_LOG_POS=1008, GET_MASTER_PUBLIC_KEY = 1;
+Start slave;
+Show slave status\G
+#Создадим базу данных на мастере
+Create database otus;
+Show databases;
+#Создадим таблицу в базе данных otus и добавим в нее данные
+Use otus;
+Create table test_tbl  (id int);
+Insert into test_tbl values (1), (2), (3), (4), (5), (6);
+#Проверка
+select * from test_tbl;
+
+==========================================
+Slave
+#Проверим репликацию баз на слейве
+Show databases;
+Use otus;
+Show tables;
+mysql> Select  *  from  test_tbl; (должно быть одинаково с мастером)
+#Сверяем позиции и позиции бинлога
+SHOW MASTER STATUS; на мастере
+Show slave status\G на слэйве
+
+
+УСТАНОВКА WORDPRESS 
+1: Создайте базу данных MySQL и пользователя для WordPress
+mysql -u root -p
+#создать БД для WordPress
+CREATE DATABASE wordpress;
+#Создадим пользователя для Wordpress и пароль
+CREATE USER 'wordpressevgeniy'@'localhost' IDENTIFIED BY 'Qaz/2152';
+#предоставим полные права на использование БД для WordPress
+GRANT ALL PRIVILEGES ON wordpress.* TO 'wordpressevgeniy'@'localhost';
+#обновить привилегии
+FLUSH PRIVILEGES;
+exit
+
+2: Установка WordPress
+#Для корректной работы WordPress нужно установить модуль PHP
+yum install php-gd
+#Затем нужно перезапустить Apache
+service httpd restart
+#скачать последнюю версию WordPress, просто наберите:
+cd ~
+wget http://wordpress.org/latest.tar.gz
+#извлечь файлы из архива
+tar xzvf latest.tar.gz
+#В домашнем каталоге появится каталог wordpress. Чтобы завершить установку, 
+нужно перенести распакованные файлы в root каталог Apache
+rysnc скопирует все содержимое распакованного каталога в каталог веб-сервера /var/www/html/
+rsync -avP ~/wordpress/ /var/www/html/
+#нужно добавить отдельную папку для хранения файлов WordPress
+mkdir /var/www/html/wp-content/uploads
+#установить привилегии на файлы и папки WordPress для повышения безопасности
+chown -R apache:apache /var/www/html/*
+chcon -Rv --type=httpd_sys_rw_content_t /var/www/html/*
+Теперь веб-сервер имеет возможность создавать и изменять файлы WordPress,
+а также позволит подгружать контент на сервер.
+
+3: Настройка WordPress
+#Перейдите в root каталог Apache, в котором установлен WordPress:
+cd /var/www/html
+#скопировать конфигурационный файл WordPress wp-config.php на место конфигурационного файла по умолчанию
+cp wp-config-sample.php wp-config.php
+#
+nano wp-config.php
+
+// ** Database settings - You can get this info from your web host ** //
+/** The name of the database for WordPress */
+define( 'DB_NAME', 'wordpress' );
+
+/** MySQL database username */
+define( 'DB_USER', 'wordpressevgeniy' );
+
+/** MySQL database password */
+define( 'DB_PASSWORD', 'Qaz/2152' );
+--------------------------------
+yum install php
+yum install php-mysqli
+mysql -u root -p
+#создать БД для WordPress
+CREATE DATABASE wordpress;
+ GRANT ALL PRIVILEGES ON wordpress.* TO wordpressuser@localhost IDENTIFEED BY 'Qaz/2152';
+ FLUSH PRIVILEGES;
+ 
+ cgoQKmrLh5(04GZ!&n
+ https://invs.ru/support/chastie-voprosy/kak-ustanovit-joomla-na-centos-7/
+ https://unihost.com/help/ru/how-to-update-php-centos-7/
+ https://www.8host.com/blog/ustanovka-wordpress-on-centos-7/

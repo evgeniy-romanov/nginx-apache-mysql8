@@ -1,0 +1,63 @@
+#master
+nano  /etc/my.cnf
+# выбираем ID сервера, произвольное число, лучше начинать с 1
+server-id = 1
+# путь к бинарному логу
+log_bin = /var/log/mysql/mysql-bin.log
+# название Вашей базы данных, которая будет реплицироваться
+binlog_do_db = wordpress
+
+systemctl restart mysqld
+mysql -u root -p
+Qaz/2152
+Далее создаем и назначаем права пользователю для реплики:
+CREATE USER replicuser@'%' IDENTIFIED WITH 'caching_sha2_password' BY 'Qaz/2152';
+GRANT REPLICATION SLAVE ON *.* TO replicuser@'%';
+FLUSH PRIVILEGES;
+Далее блокируем все таблицы в нашей базе данных:
+USE wordpress;
+FLUSH TABLES WITH READ LOCK;
+Проверяем статус Мастер-сервера:
+SHOW MASTER STATUS;
+binlog.000005  Position 1094
+exit
+Дамп базы
+yum install tcpdump
+mysqldump -u root -p wordpress > wordpress.sql
+scp wordpress.sql 192.168.31.109:/tmp
+#пароль root
+2152
+Разблокируем таблицы в консоли mysql:
+mysql -u root -p
+Qaz/2152
+UNLOCK TABLES;
+
+
+#slave
+rm -rf /var/lib/mysql/auto.cnf
+nano  /etc/my.cnf
+# выбираем ID сервера, произвольное число, лучше начинать с 1
+server-id = 2
+# путь к relay логу
+relay-log = /var/log/mysql/mysql-relay-bin.log
+# Путь к bin логу на Мастере
+log_bin = /var/log/mysql/mysql-bin.log
+# название Вашей базы данных, которая будет реплицироваться
+binlog_do_db = wordpress
+
+systemctl restart mysqld
+
+Создание базы на слейве
+В консоли mysql на Слейве создаем базу с таким же именем, как и на Мастере:
+CREATE DATABASE wordpress;
+После этого загружаем дамп (из bash):
+mysql -u root -p wordpress < wordpress.sql
+Qaz/2152
+
+Запуск Слейва
+Нам осталось включить репликацию, для этого необходимо указать параметры подключения к мастеру. В консоли mysql на Слейве необходимо выполнить запрос:
+CHANGE MASTER TO MASTER_HOST='192.168.31.125', MASTER_USER='replicuser', MASTER_PASSWORD='Qaz/2152', MASTER_LOG_F
+ILE = 'mysql-bin.000005', MASTER_LOG_POS = 1094;
+После этого запускаем репликацию на Слейве:
+START SLAVE;
+SHOW SLAVE STATUS\G
